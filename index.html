@@ -1,0 +1,550 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>The Amazing Digital Circus — Slot Machine</title>
+
+  <style>
+    /* ========== THEME COLORS ========== */
+    :root{
+      --vivid-tangerine: #ff938a;
+      --macaroni-cheese: #ffb885;
+      --cream-brulee: #ffe3a3;
+      --sulu: #beed87;
+      --bermuda: #7ae1b4;
+      --bg-dark: #0f1115;
+    }
+
+    *{box-sizing:border-box}
+    html,body{height:100%; margin:0; font-family:Inter,system-ui,-apple-system,Segoe UI,Roboto,"Helvetica Neue",Arial;}
+    body{
+      background:var(--bg-dark);
+      display:flex;
+      align-items:center;
+      justify-content:center;
+      padding:24px;
+      color:#070707;
+    }
+
+    /* GLITCHY BACKGROUND */
+    .wallpaper{
+      position:fixed; inset:0; z-index:-2;
+      background:
+        radial-gradient(circle at 10% 20%, rgba(255,147,138,0.06), transparent 12%),
+        radial-gradient(circle at 85% 70%, rgba(122,225,180,0.06), transparent 12%),
+        linear-gradient(120deg, rgba(255,200,170,0.03), rgba(190,255,210,0.03));
+      animation:hueShift 8s linear infinite alternate;
+      filter: saturate(1.2) contrast(1.05);
+    }
+    .glitch-layer{
+      position:fixed; inset:0; z-index:-1; pointer-events:none;
+      background-image:
+        repeating-linear-gradient(90deg, rgba(255,255,255,0.015) 0 1px, transparent 1px 6px),
+        repeating-linear-gradient(0deg, rgba(0,0,0,0.015) 0 1px, transparent 1px 8px);
+      mix-blend-mode: overlay;
+      animation: shift 5s linear infinite;
+    }
+    @keyframes hueShift{0%{filter:hue-rotate(0deg)}100%{filter:hue-rotate(40deg)}}
+    @keyframes shift{0%{transform:translateX(0)}50%{transform:translateX(6px) translateY(-3px)}100%{transform:translateX(0)}}
+
+    /* LAYOUT */
+    .container{
+      width:100%;
+      max-width:1100px;
+      display:grid;
+      grid-template-columns:160px 1fr 160px;
+      gap:16px;
+      align-items:start;
+    }
+    .portrait{
+      background:linear-gradient(180deg,var(--cream-brulee), rgba(255,255,255,0.02));
+      border-radius:16px;
+      padding:12px;
+      display:flex;
+      justify-content:center;
+      align-items:center;
+      height:420px;
+      box-shadow:0 8px 30px rgba(0,0,0,0.4);
+      overflow:hidden;
+    }
+    .portrait img{width:100%;height:100%;object-fit:cover;border-radius:10px;}
+
+    .machine{
+      background:linear-gradient(180deg, rgba(255,255,255,0.03), rgba(255,255,255,0.02));
+      padding:20px;
+      border-radius:18px;
+      box-shadow:0 18px 40px rgba(10,10,10,0.5);
+      display:flex;
+      flex-direction:column;
+      align-items:center;
+      gap:12px;
+    }
+
+    .title{width:100%;display:flex;justify-content:space-between;align-items:center}
+    .title h1{margin:0;color:#fff;font-size:20px}
+
+    .viewport{
+      width:100%;
+      max-width:700px;
+      background: linear-gradient(180deg,var(--vivid-tangerine), var(--macaroni-cheese));
+      padding:16px;border-radius:12px;display:flex;justify-content:center;align-items:center;position:relative;overflow:hidden;border:6px solid rgba(255,255,255,0.06);
+    }
+
+    .reels{display:flex;gap:14px;padding:6px}
+    .reel{
+      width:120px;height:180px;border-radius:10px;overflow:hidden;position:relative;border:4px solid rgba(255,255,255,0.04);display:flex;align-items:center;justify-content:center;
+      background:linear-gradient(180deg, rgba(255,255,255,0.06), rgba(0,0,0,0.06));
+      box-shadow:0 12px 24px rgba(0,0,0,0.35);
+    }
+
+    .symbols{
+      position:absolute; top:0; left:0; right:0; display:flex; flex-direction:column; align-items:center; gap:8px; padding:10px 0;
+      transform: translateY(0);
+      transition: transform 1s cubic-bezier(.2,.9,.3,1);
+      will-change: transform;
+    }
+
+    .symbol{
+      width:86px;height:56px;border-radius:8px;display:flex;align-items:center;justify-content:center;font-size:34px;background:white;color:#222;box-shadow:0 6px 14px rgba(0,0,0,0.25);
+    }
+
+    .win-line{ position:absolute; top: calc(50% - 28px); left:0; right:0; height:56px; border-radius:6px; pointer-events:none; box-shadow: inset 0 0 0 3px rgba(255,255,255,0.06); mix-blend-mode: overlay; background: linear-gradient(90deg, rgba(255,255,255,0.03), rgba(0,0,0,0.02));}
+
+    .controls{width:100%;display:flex;gap:12px;align-items:center;justify-content:space-between;margin-top:6px}
+    .left-controls{display:flex;gap:8px;align-items:center}
+    .stat{background:rgba(255,255,255,0.06);padding:8px 12px;border-radius:8px;font-weight:700;color:#080808}
+    button{appearance:none;border:0;background:linear-gradient(180deg, rgba(255,255,255,0.98), rgba(255,255,255,0.95));padding:10px 18px;border-radius:10px;cursor:pointer;box-shadow:0 8px 20px rgba(0,0,0,0.25);font-weight:700}
+    .spin-btn{background:linear-gradient(180deg,var(--sulu),var(--bermuda));color:#062217;font-size:18px;padding:12px 28px;border-radius:12px}
+    .small{padding:8px 10px;border-radius:8px;font-weight:700}
+
+    .overlay{position:fixed;inset:0;display:flex;align-items:center;justify-content:center;z-index:40;background:linear-gradient(180deg, rgba(0,0,0,0.45), rgba(0,0,0,0.6));padding:24px}
+    .card{background:linear-gradient(180deg, rgba(255,255,255,0.97), rgba(255,255,255,0.95));border-radius:12px;padding:22px;max-width:760px;width:100%;box-shadow:0 28px 70px rgba(0,0,0,0.6)}
+    .instructions{color:rgba(0,0,0,0.6); margin-top:8px; font-size:14px}
+
+    @media (max-width:920px){ .container{grid-template-columns:120px 1fr 120px} .portrait{height:320px} .reel{width:96px;height:150px} .symbol{width:70px;height:48px;font-size:28px} }
+    @media (max-width:640px){ .container{grid-template-columns:1fr} .portrait{display:none} .viewport{max-width:420px} }
+  </style>
+</head>
+<body>
+  <div class="wallpaper"></div>
+  <div class="glitch-layer"></div>
+
+  <div class="container" id="app">
+    <div class="portrait">
+      <img id="leftPortrait" src="images/caine-placeholder.png" alt="Caine (replace with your image)">
+    </div>
+
+    <main class="machine" role="main" aria-labelledby="title">
+      <div class="title">
+        <h1 id="title">The Amazing Digital Circus — Slot Machine</h1>
+        <div style="display:flex;gap:10px;align-items:center">
+          <button class="small" id="muteBtn" title="Mute / Unmute">🔊</button>
+        </div>
+      </div>
+
+      <div class="viewport" aria-hidden="false">
+        <div class="reels" id="reels">
+          <div class="reel" data-reel="0"><div class="symbols" id="symbols-0"></div></div>
+          <div class="reel" data-reel="1"><div class="symbols" id="symbols-1"></div></div>
+          <div class="reel" data-reel="2"><div class="symbols" id="symbols-2"></div></div>
+        </div>
+        <div class="win-line" aria-hidden="true"></div>
+      </div>
+
+      <div class="controls">
+        <div class="left-controls">
+          <button id="betDown" class="small">-</button>
+          <div class="stat">Bet: <span id="betDisplay">1</span></div>
+          <button id="betUp" class="small">+</button>
+          <div class="stat">Credits: <span id="creditsDisplay">50</span></div>
+          <div class="stat">High Score: <span id="highScoreDisplay">0</span></div>
+        </div>
+
+        <div style="display:flex; gap:10px; align-items:center;">
+          <button id="spinBtn" class="spin-btn">SPIN</button>
+          <button id="maxBtn" class="small">MAX</button>
+        </div>
+      </div>
+
+      <div style="width:100%; display:flex; justify-content:space-between; margin-top:6px; gap:10px;">
+        <div style="color:rgba(0,0,0,0.65); font-weight:700;">
+          Spins: <span id="spinCount">0</span> • Level: <span id="levelDisplay">1</span>
+        </div>
+        <div style="color:rgba(0,0,0,0.65); font-weight:700;">
+          Wins: <span id="winCount">0</span> • Win Rate: <span id="winRate">0%</span>
+        </div>
+      </div>
+    </main>
+
+    <div class="portrait">
+      <img id="rightPortrait" src="images/bubble-placeholder.png" alt="Bubble (replace with your image)">
+    </div>
+  </div>
+
+  <!-- START OVERLAY -->
+  <div id="startOverlay" class="overlay" role="dialog" aria-modal="true">
+    <div class="card">
+      <h2 style="margin:0 0 8px 0;">Welcome to The Amazing Digital Circus</h2>
+      <p class="instructions">
+        Match three symbols across the middle row to win credits. Start with 50 credits.
+      </p>
+      <ul class="instructions" style="margin-top:10px;">
+        <li>Click SPIN or press Space/Enter to spin. Use + / - to change bet. MAX bets your full credits.</li>
+        <li>Audio: Spin, Win, Lose sounds play. Use the 🔊 button to mute/unmute. Preference is saved.</li>
+        <li>Progression: Every 10 spins the level rises — spins speed up and odds tighten.</li>
+      </ul>
+
+      <div style="display:flex; gap:12px; margin-top:16px; justify-content:flex-end;">
+        <button id="startBtn">Start Playing</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- GAME OVER -->
+  <div id="gameOverOverlay" class="overlay" style="display:none" role="dialog" aria-modal="true">
+    <div class="card">
+      <h2 id="gameOverTitle" style="margin:0 0 8px 0;">Game Over</h2>
+      <p class="instructions" id="finalStats"></p>
+      <div style="display:flex; gap:10px; justify-content:flex-end; margin-top:12px;">
+        <button id="restartBtn">Restart</button>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    /*
+      Playable Slot Machine
+      - Single file (index.html) ready to put at repo root.
+      - Uses WebAudio synthesized SFX (no external audio files).
+      - High score and mute saved in localStorage.
+      - Comments and clear structure to make it easy to extend.
+    */
+
+    (function(){
+      // SYMBOLS (emojis)
+      const SYMBOLS = [
+        {label:'🎪', name:'Tent'},
+        {label:'🎩', name:'Hat'},
+        {label:'🤹', name:'Juggler'},
+        {label:'🎈', name:'Balloon'},
+        {label:'🎟️', name:'Ticket'}
+      ];
+
+      // STATE
+      const state = {
+        credits: 50,
+        bet: 1,
+        highScore: Number(localStorage.getItem('adcs_highScore') || 0),
+        muted: (localStorage.getItem('adcs_muted') === '1'),
+        spinning: false,
+        spinCount: 0,
+        winCount: 0,
+        level: 1
+      };
+
+      // DOM
+      const symbolsContainers = [
+        document.getElementById('symbols-0'),
+        document.getElementById('symbols-1'),
+        document.getElementById('symbols-2')
+      ];
+      const spinBtn = document.getElementById('spinBtn');
+      const betDisplay = document.getElementById('betDisplay');
+      const creditsDisplay = document.getElementById('creditsDisplay');
+      const highScoreDisplay = document.getElementById('highScoreDisplay');
+      const betUp = document.getElementById('betUp');
+      const betDown = document.getElementById('betDown');
+      const maxBtn = document.getElementById('maxBtn');
+      const muteBtn = document.getElementById('muteBtn');
+      const startOverlay = document.getElementById('startOverlay');
+      const startBtn = document.getElementById('startBtn');
+      const gameOverOverlay = document.getElementById('gameOverOverlay');
+      const restartBtn = document.getElementById('restartBtn');
+      const spinCountEl = document.getElementById('spinCount');
+      const winCountEl = document.getElementById('winCount');
+      const winRateEl = document.getElementById('winRate');
+      const levelDisplay = document.getElementById('levelDisplay');
+      const finalStats = document.getElementById('finalStats');
+
+      // Audio (WebAudio)
+      let audioCtx = null;
+      function ensureAudio(){
+        if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+      }
+      function playTone(freq, duration=0.12, type='sine', when=0, gain=0.08){
+        if (state.muted) return;
+        ensureAudio();
+        const o = audioCtx.createOscillator();
+        const g = audioCtx.createGain();
+        o.type = type;
+        o.frequency.setValueAtTime(freq, audioCtx.currentTime + when);
+        g.gain.setValueAtTime(gain, audioCtx.currentTime + when);
+        o.connect(g); g.connect(audioCtx.destination);
+        o.start(audioCtx.currentTime + when);
+        o.stop(audioCtx.currentTime + when + duration);
+      }
+      function playSpinSound(){
+        if (state.muted) return;
+        ensureAudio();
+        const now = audioCtx.currentTime;
+        for (let i=0;i<10;i++){
+          playTone(420 + i*18, 0.02, 'square', i*0.03, 0.03);
+        }
+      }
+      function playWinSound(){
+        if (state.muted) return;
+        ensureAudio();
+        playTone(700,0.12,'sine',0,0.09);
+        playTone(900,0.12,'sine',0.12,0.08);
+        playTone(1200,0.2,'sine',0.26,0.12);
+      }
+      function playLoseSound(){
+        if (state.muted) return;
+        ensureAudio();
+        playTone(160,0.28,'sawtooth',0,0.12);
+      }
+
+      // Populate each reel with repeated symbol elements so we can translate them
+      function populateReels(){
+        symbolsContainers.forEach(container => {
+          container.innerHTML = '';
+          // create multiple cycles so spin looks continuous (e.g., 25 items)
+          const cycles = 6;
+          for (let c=0;c<cycles;c++){
+            SYMBOLS.forEach(sym => {
+              const el = document.createElement('div');
+              el.className = 'symbol';
+              el.textContent = sym.label;
+              el.setAttribute('aria-label', sym.name);
+              container.appendChild(el);
+            });
+          }
+        });
+        // ensure symbols are aligned (no transition) to begin with
+        symbolsContainers.forEach(c => { c.style.transition = 'none'; c.style.transform = 'translateY(0px)'; });
+      }
+
+      // Helper: get one random symbol index (weighted slightly by level)
+      function weightedSymbolIndex(){
+        const base = SYMBOLS.map(()=>1);
+        base[0] += 0.2; // little bias
+        const adj = base.map(w => Math.max(0.5, w - (state.level-1)*0.06));
+        const sum = adj.reduce((a,b)=>a+b,0);
+        let r = Math.random()*sum;
+        for (let i=0;i<adj.length;i++){
+          if (r < adj[i]) return i;
+          r -= adj[i];
+        }
+        return 0;
+      }
+
+      // Performs a spin: picks 3 resulting symbol indices and animates reels so those symbols land in the center.
+      async function spin(){
+        if (state.spinning) return;
+        if (state.credits < state.bet){
+          alert('Not enough credits.');
+          return;
+        }
+        state.spinning = true;
+        spinBtn.disabled = true;
+
+        // consume bet
+        state.credits -= state.bet;
+        state.spinCount++;
+        updateDisplays();
+
+        // audio
+        playSpinSound();
+
+        // decide results
+        const results = [];
+        // tiny chance for jackpot (all same symbol)
+        if (Math.random() < 0.02) {
+          const idx = Math.floor(Math.random()*SYMBOLS.length);
+          results.push(idx, idx, idx);
+        } else {
+          for (let i=0;i<3;i++) results.push(weightedSymbolIndex());
+        }
+
+        // compute durations (ms) influenced by level (higher level -> faster spins)
+        const baseDurations = [900, 1200, 1500];
+        const speedFactor = Math.max(0.55, 1 - (state.level-1)*0.06);
+        const durations = baseDurations.map(d => Math.round(d * speedFactor));
+
+        // Perform staggered reel animations
+        for (let r=0;r<3;r++){
+          animateReelToSymbol(r, results[r], durations[r]);
+          // stagger
+          await sleep(120);
+        }
+
+        // wait for all to finish (max duration + small buffer)
+        await sleep(Math.max(...durations) + 160);
+
+        // Evaluate middle row: since we built cycles of symbols, determine the visible center symbol by results
+        // Simple evaluation using results array
+        const mid = results.map(i => SYMBOLS[i].label);
+        const allEqual = (mid[0] === mid[1] && mid[1] === mid[2]);
+        let payout = 0;
+        if (allEqual) {
+          // jackpot: payout reduces with level to make progression challenging
+          payout = Math.round(state.bet * (20 - (state.level-1)*2));
+        } else if (mid[0] === mid[1] || mid[1] === mid[2] || mid[0] === mid[2]) {
+          payout = Math.round(state.bet * (4 - (state.level-1)*0.3));
+        } else payout = 0;
+
+        if (payout > 0){
+          state.credits += payout;
+          state.winCount++;
+          playWinSound();
+          celebrateWin();
+        } else {
+          playLoseSound();
+        }
+
+        // update high score
+        if (state.credits > state.highScore){
+          state.highScore = state.credits;
+          localStorage.setItem('adcs_highScore', state.highScore);
+        }
+
+        // level up every 10 spins
+        if (state.spinCount % 10 === 0) state.level++;
+
+        state.spinning = false;
+        spinBtn.disabled = false;
+        updateDisplays();
+
+        if (state.credits <= 0) {
+          showGameOver();
+        }
+      }
+
+      // Animate one reel so that the specified symbolIndex (index in SYMBOLS) lands centered.
+      function animateReelToSymbol(reelIndex, symbolIndex, duration){
+        const container = symbolsContainers[reelIndex];
+        // Each cycle contains SYMBOLS.length items. We want to pick a target occurrence near the end so spins feel long.
+        const totalItems = container.children.length;
+        const itemsPerCycle = SYMBOLS.length;
+        // Find the last occurrence of the chosen symbol
+        let targetIdx = -1;
+        for (let i = totalItems - 1; i >= 0; i--){
+          if (container.children[i].textContent === SYMBOLS[symbolIndex].label){
+            targetIdx = i;
+            break;
+          }
+        }
+        if (targetIdx === -1) targetIdx = Math.floor(totalItems/2);
+
+        // compute symbol height (includes gap). Use first child's height + gap (8px) for consistent spacing
+        const first = container.children[0];
+        const symbolHeight = first.getBoundingClientRect().height + 8; // gap set in CSS
+        const reelEl = container.parentElement;
+        const reelHeight = reelEl.getBoundingClientRect().height;
+        const centerOffset = (reelHeight / 2) - (symbolHeight / 2);
+
+        // compute distance from container top to target element top:
+        const distanceTop = targetIdx * symbolHeight;
+        const finalY = -distanceTop + centerOffset;
+
+        // To create longer spin, start from a positive offset (so it moves downward then back up)
+        const extraCyclesPx = symbolHeight * itemsPerCycle * 3; // 3 cycles extra
+        container.style.transition = 'none';
+        container.style.transform = `translateY(${extraCyclesPx}px)`;
+        // force reflow
+        container.getBoundingClientRect();
+        // then move to final position with transition
+        container.style.transition = `transform ${duration}ms cubic-bezier(.18,.9,.28,1)`;
+        // small jitter to feel organic
+        const jitter = (Math.random()*10 - 5);
+        setTimeout(()=> {
+          container.style.transform = `translateY(${finalY + jitter}px)`;
+        }, 20);
+      }
+
+      // celebration animation for win
+      function celebrateWin(){
+        const vp = document.querySelector('.viewport');
+        vp.animate([
+          { boxShadow: '0 18px 40px rgba(122,225,180,0.08)' },
+          { boxShadow: '0 28px 70px rgba(122,225,180,0.28)', transform: 'scale(1.02)' },
+          { boxShadow: '0 18px 40px rgba(122,225,180,0.08)', transform: 'scale(1)' }
+        ], { duration: 700, easing:'ease-out' });
+      }
+
+      function showGameOver(){
+        document.getElementById('gameOverTitle').textContent = 'Game Over — Out of Credits';
+        finalStats.innerHTML = `You played ${state.spinCount} spins and won ${state.winCount} times.<br>High Score: ${state.highScore}<br>Level reached: ${state.level}`;
+        gameOverOverlay.style.display = 'flex';
+      }
+
+      function restartGame(){
+        gameOverOverlay.style.display = 'none';
+        state.credits = 50;
+        state.bet = 1;
+        state.spinCount = 0;
+        state.winCount = 0;
+        state.level = 1;
+        updateDisplays();
+      }
+
+      // UI bindings
+      spinBtn.addEventListener('click', ()=> {
+        // Ensure audio context resumed by user gesture
+        if (audioCtx && audioCtx.state === 'suspended') audioCtx.resume().catch(()=>{});
+        spin();
+      });
+      betUp.addEventListener('click', ()=> { state.bet = Math.min(state.bet+1, Math.max(1, state.credits)); updateDisplays(); });
+      betDown.addEventListener('click', ()=> { state.bet = Math.max(1, state.bet-1); updateDisplays(); });
+      maxBtn.addEventListener('click', ()=> { state.bet = Math.max(1, state.credits); updateDisplays(); });
+      muteBtn.addEventListener('click', ()=> { state.muted = !state.muted; localStorage.setItem('adcs_muted', state.muted ? '1' : '0'); updateDisplays(); });
+      startBtn.addEventListener('click', ()=> {
+        startOverlay.style.display = 'none';
+        // create/resume audio context on user gesture
+        ensureAudio();
+        if (audioCtx.state === 'suspended') audioCtx.resume().catch(()=>{});
+      });
+      restartBtn.addEventListener('click', ()=> { restartGame(); startOverlay.style.display = 'none'; });
+
+      // keyboard: Space / Enter = spin, +/- = bet change
+      window.addEventListener('keydown', (e) => {
+        if (e.repeat) return;
+        if (startOverlay.style.display !== 'none') return; // ignore while in start overlay
+        if (e.key === ' ' || e.key === 'Enter') { e.preventDefault(); spin(); }
+        if (e.key === '+') { state.bet = Math.min(state.bet+1, Math.max(1, state.credits)); updateDisplays(); }
+        if (e.key === '-') { state.bet = Math.max(1, state.bet-1); updateDisplays(); }
+      });
+
+      // init UI / reels
+      function updateDisplays(){
+        betDisplay.textContent = state.bet;
+        creditsDisplay.textContent = state.credits;
+        highScoreDisplay.textContent = state.highScore;
+        spinCountEl.textContent = state.spinCount;
+        winCountEl.textContent = state.winCount;
+        const rate = state.spinCount ? Math.round(1000 * state.winCount / state.spinCount) / 10 : 0;
+        winRateEl.textContent = rate + '%';
+        levelDisplay.textContent = state.level;
+        muteBtn.textContent = state.muted ? '🔇' : '🔊';
+      }
+
+      function sleep(ms){ return new Promise(res => setTimeout(res, ms)); }
+
+      // initial setup
+      function init(){
+        populateReels();
+        updateDisplays();
+        // allow clicking on portraits to replace with real images in a simple UX (optional)
+        document.getElementById('leftPortrait').addEventListener('click', ()=> alert('Replace the left portrait image file at images/caine-placeholder.png with your own image.'));
+        document.getElementById('rightPortrait').addEventListener('click', ()=> alert('Replace the right portrait image file at images/bubble-placeholder.png with your own image.'));
+      }
+
+      init();
+
+      // expose for debug
+      window.ADCS = { state, spin, restartGame, populateReels };
+    })();
+  </script>
+</body>
+</html>
